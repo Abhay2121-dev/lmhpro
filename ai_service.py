@@ -4,6 +4,7 @@ Gemini API calls: reflection, continuation, risk classification, session summary
 All functions return plain dicts; errors are caught and returned gracefully.
 """
 import json
+import os
 import re
 from typing import Optional
 
@@ -14,7 +15,13 @@ from google.genai import types
 from prompts import COMPANION_SYSTEM, THEME_TAGS
 from safety import Risk
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemma-4-31b-it"
+PLACEHOLDER_API_KEY = "your_google_api_key_here"
+MISSING_API_KEY_MESSAGE = (
+    "Missing GOOGLE_API_KEY. For local runs, add it to "
+    "`.streamlit/secrets.toml`. For Streamlit Community Cloud, add "
+    "`GOOGLE_API_KEY = \"...\"` in App settings -> Secrets, then restart the app."
+)
 
 # ── Client (cached so it survives Streamlit reruns) ──────────────────
 @st.cache_resource
@@ -23,11 +30,35 @@ def _get_client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
+def _configured_api_key() -> str:
+    """Read the API key from Streamlit secrets first, then the environment."""
+    try:
+        key = st.secrets.get("GOOGLE_API_KEY", "")
+    except Exception:
+        key = ""
+    if not key:
+        key = os.getenv("GOOGLE_API_KEY", "")
+    return key.strip()
+
+
+def api_key_error() -> Optional[str]:
+    key = _configured_api_key()
+    if not key:
+        return MISSING_API_KEY_MESSAGE
+    if key == PLACEHOLDER_API_KEY:
+        return "Replace the placeholder GOOGLE_API_KEY value with a real API key."
+    return None
+
+
+def is_configured() -> bool:
+    return api_key_error() is None
+
+
 def _client() -> genai.Client:
-    key = st.secrets.get("GOOGLE_API_KEY", "")
-    if not key or key == "your_google_api_key_here":
-        raise ValueError("Add GOOGLE_API_KEY to .streamlit/secrets.toml")
-    return _get_client(key)
+    error = api_key_error()
+    if error:
+        raise ValueError(error)
+    return _get_client(_configured_api_key())
 
 
 def _call(prompt: str, system: Optional[str] = None, max_tokens: int = 1500) -> str:

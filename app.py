@@ -20,6 +20,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+api_config_error = ai.api_key_error()
+
 # ── CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -631,8 +633,11 @@ with col_journal:
 
     get_recs_button = st.button("Get AI Recommendations ✦", use_container_width=True)
 
+    if api_config_error:
+        st.warning(api_config_error)
+
     _trigger_key = journal_text.strip() + "||" + selected
-    if get_recs_button and journal_text.strip():
+    if get_recs_button and journal_text.strip() and not api_config_error:
         st.session_state.risk_msg = None
         risk = risk_check(journal_text)
 
