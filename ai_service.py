@@ -14,7 +14,7 @@ from google.genai import types
 from prompts import COMPANION_SYSTEM, THEME_TAGS
 from safety import Risk
 
-MODEL = "gemma-4-26b-a4b-it"
+MODEL = "gemini-2.0-flash"
 
 # ── Client (cached so it survives Streamlit reruns) ──────────────────
 @st.cache_resource
