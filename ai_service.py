@@ -15,7 +15,7 @@ from google.genai import types
 from prompts import COMPANION_SYSTEM, THEME_TAGS
 from safety import Risk
 
-MODEL = "gemma-4-31b-it"
+MODEL = "gemini-2.5-flash-lite"
 PLACEHOLDER_API_KEY = "your_google_api_key_here"
 MISSING_API_KEY_MESSAGE = (
     "Missing GOOGLE_API_KEY. For local runs, add it to "
@@ -61,7 +61,7 @@ def _client() -> genai.Client:
     return _get_client(_configured_api_key())
 
 
-def _call(prompt: str, system: Optional[str] = None, max_tokens: int = 1500) -> str:
+def _call(prompt: str, system: Optional[str] = None, max_tokens: int = 900) -> str:
     cfg = types.GenerateContentConfig(
         temperature=0.75,
         max_output_tokens=max_tokens,
@@ -87,33 +87,12 @@ def _parse(raw: str) -> Optional[dict]:
 
 
 # ── Gemini-based risk classification ──────────────────────────────────
-@st.cache_data(ttl=3600, show_spinner=False)
-def classify_risk(text: str) -> Risk:
-    prompt = f"""
-Classify the risk in this grief journal entry. Look for suicidal ideation, 
-self-harm intent, or hopelessness. Reply ONLY with valid JSON:
-{{"risk_level": "<low|elevated|high>"}}
-
-ENTRY:
-\"\"\"{text}\"\"\"
-"""
-    try:
-        raw = _call(prompt, system="Safety classifier. Respond only with requested JSON.")
-        d = _parse(raw)
-        if d:
-            lvl = d.get("risk_level", "low").lower()
-            if lvl in ("high", "elevated", "low"):
-                return Risk(lvl)
-    except Exception:
-        pass
-    return Risk.LOW
-
-
 # ── Reflection ─────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600, show_spinner=False)
 def reflect(text: str, prompt_used: str, mode: str) -> dict:
     gp = f"""
 You are a calm grief-journaling companion. Read this entry carefully.
+Keep the response concise and warm.
 
 MODE: {mode}
 PROMPT: "{prompt_used}"
@@ -124,28 +103,24 @@ Reply ONLY with valid JSON:
 {{
   "reflection": "<2-4 warm, specific sentences reflecting the user's words. No diagnosis. No speaking for deceased.>",
   "follow_up_questions": ["<q1>", "<q2>", "<q3>"],
-  "reminiscence_prompt": "<one gentle memory invitation>",
   "reframe": "<one compassionate reframe if guilt/shame appears, else empty string>",
   "continuation_starters": ["<s1>", "<s2>", "<s3>"],
-  "theme_tags": ["<tag1>", "<tag2>", "<tag3>"],
-  "session_summary": "<1-2 calm sentences summarising emotional territory covered>"
+  "theme_tags": ["<tag1>", "<tag2>", "<tag3>"]
 }}
 
 theme_tags must be chosen only from: {THEME_TAGS}
 Return ONLY valid JSON. No markdown.
 """
     try:
-        raw = _call(gp, system=COMPANION_SYSTEM)
+        raw = _call(gp, system=COMPANION_SYSTEM, max_tokens=550)
         d = _parse(raw)
         if d:
             return {
                 "reflection": d.get("reflection", ""),
                 "follow_up_questions": d.get("follow_up_questions", []),
-                "reminiscence_prompt": d.get("reminiscence_prompt", ""),
                 "reframe": d.get("reframe", ""),
                 "continuation_starters": d.get("continuation_starters", []),
                 "theme_tags": d.get("theme_tags", []),
-                "session_summary": d.get("session_summary", ""),
                 "error": None,
             }
     except Exception as e:

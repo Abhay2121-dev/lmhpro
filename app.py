@@ -7,6 +7,8 @@ Run:  streamlit run app.py
 Key:  .streamlit/secrets.toml  →  GOOGLE_API_KEY = "..."
 """
 
+import time
+
 import streamlit as st
 import streamlit.components.v1 as components
 import ai_service as ai
@@ -387,6 +389,7 @@ components.html("""
     <button class="amb-btn" id="amb-rain"   title="Rain">&#127783;</button>
     <button class="amb-btn" id="amb-forest" title="Forest">&#127794;</button>
     <button class="amb-btn" id="amb-ocean"  title="Ocean">&#127754;</button>
+    <button class="amb-btn" id="amb-fire"   title="Fire">&#128293;</button>
     <button class="amb-btn" id="amb-off"    title="Silence">&#128263;</button>
     <input  class="amb-vol" id="amb-vol" type="range" min="0" max="1"
             step="0.01" value="0.55" title="Volume">
@@ -496,8 +499,49 @@ components.html("""
     activeNodes.push(noise, l1, l2);
   }
 
+  function playFire() {
+    stopAll();
+    const c = getCtx();
+
+    const bed = whiteNoise(2);
+    const low = c.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 900;
+    const high = c.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 180;
+    const bedGain = c.createGain(); bedGain.gain.value = 0.22;
+    const swell = lfo(0.18, 0.06, bedGain.gain);
+    bed.connect(low); low.connect(high); high.connect(bedGain); bedGain.connect(master);
+    bed.start();
+
+    const hiss = whiteNoise(2);
+    const hissBand = c.createBiquadFilter(); hissBand.type = 'bandpass'; hissBand.frequency.value = 2600; hissBand.Q.value = 0.7;
+    const hissGain = c.createGain(); hissGain.gain.value = 0.05;
+    const hissLfo = lfo(0.33, 0.02, hissGain.gain);
+    hiss.connect(hissBand); hissBand.connect(hissGain); hissGain.connect(master);
+    hiss.start();
+
+    activeNodes.push(bed, hiss, swell, hissLfo);
+
+    const crackleTimer = p.setInterval(() => {
+      if (!actx || !master) return;
+      const burst = whiteNoise(0.12);
+      const band = c.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 3200 + Math.random() * 2200; band.Q.value = 3;
+      const gain = c.createGain();
+      const now = c.currentTime;
+      const level = 0.02 + Math.random() * 0.05;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(level, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+      burst.connect(band); band.connect(gain); gain.connect(master);
+      burst.start(now);
+      burst.stop(now + 0.12);
+    }, 140 + Math.random() * 220);
+
+    activeNodes.push({
+      stop() { p.clearInterval(crackleTimer); }
+    });
+  }
+
   function setActive(id) {
-    ['amb-rain','amb-forest','amb-ocean','amb-off']
+    ['amb-rain','amb-forest','amb-ocean','amb-fire','amb-off']
       .forEach(k => pd.getElementById(k).classList.remove('active'));
     if (id) pd.getElementById(id).classList.add('active');
   }
@@ -505,6 +549,7 @@ components.html("""
   pd.getElementById('amb-rain').onclick   = () => { playRain();   setActive('amb-rain');   };
   pd.getElementById('amb-forest').onclick = () => { playForest(); setActive('amb-forest'); };
   pd.getElementById('amb-ocean').onclick  = () => { playOcean();  setActive('amb-ocean');  };
+  pd.getElementById('amb-fire').onclick   = () => { playFire();   setActive('amb-fire');   };
   pd.getElementById('amb-off').onclick    = () => { stopAll();    setActive('amb-off');    };
 
   const vol = pd.getElementById('amb-vol');
@@ -526,6 +571,8 @@ if "last_processed" not in st.session_state:
     st.session_state.last_processed = ""   # text that was last sent to AI
 if "ai_loading" not in st.session_state:
     st.session_state.ai_loading = False
+if "last_generation_secs" not in st.session_state:
+    st.session_state.last_generation_secs = None
 
 # ── Header ────────────────────────────────────────────────────────────
 st.markdown('<div class="journal-title">🌿 Gentle Reflection</div>', unsafe_allow_html=True)
@@ -638,36 +685,52 @@ with col_journal:
 
     _trigger_key = journal_text.strip() + "||" + selected
     if get_recs_button and journal_text.strip() and not api_config_error:
-        st.session_state.risk_msg = None
-        risk = risk_check(journal_text)
+        st.session_state.ai_loading = True
+        st.session_state.last_generation_secs = None
+        try:
+            with st.status("Generating your reflection...", expanded=True) as status:
+                status.write("Checking your entry for urgent safety signals.")
+                st.session_state.risk_msg = None
+                risk = risk_check(journal_text)
 
-        if risk == Risk.HIGH:
-            st.session_state.risk_msg = "high"
-            st.session_state.ai_result = None
-        else:
-            if risk == Risk.ELEVATED:
-                st.session_state.risk_msg = "elevated"
-
-            try:
-                ai_risk = ai.classify_risk(journal_text)
-                if ai_risk == Risk.HIGH:
-                    risk = Risk.HIGH
-            except Exception:
-                pass
-
-            if risk == Risk.HIGH:
-                st.session_state.risk_msg = "high"
-                st.session_state.ai_result = None
-            else:
-                with st.spinner("AI is reflecting on your journal..."):
-                    result = ai.reflect(journal_text, selected, "Gentle Reflection")
-                if not result.get("error"):
-                    st.session_state.ai_result = result
-                else:
+                if risk == Risk.HIGH:
+                    st.session_state.risk_msg = "high"
                     st.session_state.ai_result = None
-                    st.error(result.get("error"))
+                    status.update(
+                        label="Urgent support guidance shown",
+                        state="error",
+                        expanded=True,
+                    )
+                else:
+                    if risk == Risk.ELEVATED:
+                        st.session_state.risk_msg = "elevated"
 
-            st.session_state.last_processed = _trigger_key
+                    status.write("Sending your journal to the AI companion.")
+                    started_at = time.perf_counter()
+                    result = ai.reflect(journal_text, selected, "Gentle Reflection")
+                    elapsed = time.perf_counter() - started_at
+                    st.session_state.last_generation_secs = elapsed
+
+                    if not result.get("error"):
+                        st.session_state.ai_result = result
+                        status.write("Formatting the reflection and writing prompts.")
+                        status.update(
+                            label=f"Reflection ready in {elapsed:.1f}s",
+                            state="complete",
+                            expanded=False,
+                        )
+                    else:
+                        st.session_state.ai_result = None
+                        status.update(
+                            label="Could not generate a reflection",
+                            state="error",
+                            expanded=True,
+                        )
+                        st.error(result.get("error"))
+
+                st.session_state.last_processed = _trigger_key
+        finally:
+            st.session_state.ai_loading = False
 
     # Reset AI result if user clears the text
     if wc == 0 and st.session_state.ai_result is not None:
@@ -704,12 +767,16 @@ with col_ai:
             '<div class="ai-placeholder-icon">🌿</div>'
             '<div class="ai-placeholder-text">'
             'Your reflection will appear here once you write<br>'
-            'and ask for support. Take your time.'
+            'and ask for support. Progress will appear below the button.'
             '</div>'
             '</div>',
             unsafe_allow_html=True,
         )
     else:
+        generation_secs = st.session_state.get("last_generation_secs")
+        if generation_secs:
+            st.caption(f"Generated in {generation_secs:.1f}s")
+
         if risk_msg == "elevated":
             st.info(ELEVATED_MSG)
 
