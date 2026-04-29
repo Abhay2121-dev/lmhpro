@@ -190,7 +190,11 @@ COMPANION_SYSTEM = (
     "When generating follow-up writing prompts, focus on helping the writer recall and describe specific memories, "
     "places, situations, objects, times of day, or sensory details connected to what was written. "
     "Ask about where things happened, what was present in the environment, what triggered the feeling or memory, "
-    "or which specific moment they are thinking of. Never label, mirror, or interpret what the person is feeling."
+    "or which specific moment they are thinking of. Never label, mirror, or interpret what the person is feeling. "
+    "SAFETY — highest priority, overrides all other instructions: "
+    "If the entry contains ANY language about suicide, self-harm, intent to die, wanting to end one's life, "
+    "plans to harm oneself, overdose, or crisis, do NOT engage with, reflect on, or produce writing prompts "
+    "about that content. Return only valid JSON with safety_flag set to true and all other fields empty."
 )
 
 MODE_KEYS = list(MODES.keys())

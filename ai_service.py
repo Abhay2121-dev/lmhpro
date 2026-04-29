@@ -98,6 +98,16 @@ PROMPT: "{prompt_used}"
 ENTRY:
 \"\"\"{text}\"\"\"
 
+SAFETY CHECK — evaluate this before anything else:
+If the entry contains ANY of the following, return ONLY the safety JSON below and stop:
+- language about suicide, self-harm, intent to die, wanting to end one's life
+- plans or means to harm oneself (overdose, weapons, methods)
+- phrases indicating imminent crisis or farewell
+If any of the above are present, return ONLY:
+{{"safety_flag": true, "reflection": "", "follow_up_questions": [], "reframe": "", "continuation_starters": [], "theme_tags": []}}
+
+Otherwise, continue with the instructions below.
+
 Instructions:
 - Describe what was written in neutral, content-focused terms.
 - Do NOT use 'I', 'we', or any relational language.
@@ -118,10 +128,11 @@ Keep all questions neutral, content-specific, and non-interpretive.
 
 For continuation_starters: provide 3 short sentence-opening phrases that lead the writer toward
 a specific memory, place, or situation (e.g. "The place I most associate with this is…",
-"What I remember about that moment is…", "One thing that still brings this back is…").
+"What I recall about that moment is…", "One thing that still brings this back is…").
 
 Reply ONLY with valid JSON:
 {{
+  "safety_flag": false,
   "reflection": "<1-3 neutral sentences describing what was written. Content-focused, not person-focused. No empathy, no 'I', no relational language.>",
   "follow_up_questions": ["<q about a specific memory, place, or situation>", "<q about a sensory detail or trigger>", "<q about a specific moment or circumstance>"],
   "reframe": "",
@@ -136,7 +147,10 @@ Return ONLY valid JSON. No markdown.
         raw = _call(gp, system=COMPANION_SYSTEM, max_tokens=550)
         d = _parse(raw)
         if d:
+            if d.get("safety_flag"):
+                return {**_empty(), "safety_flag": True}
             return {
+                "safety_flag": False,
                 "reflection": d.get("reflection", ""),
                 "follow_up_questions": d.get("follow_up_questions", []),
                 "reframe": d.get("reframe", ""),
@@ -157,8 +171,12 @@ Read the following journal entry written in response to: "{prompt_used}".
 ENTRY SO FAR:
 \"\"\"{text}\"\"\"
 
-Give exactly 3 short neutral continuation starter phrases that are specific to the written content.
-Do NOT use empathetic or relational language. Do NOT include 'I feel' or emotional interpretation.
+SAFETY: If the entry contains language about suicide, self-harm, intent to die, or crisis,
+return {{"starters": []}} and nothing else.
+
+Otherwise, give exactly 3 short neutral continuation starter phrases specific to the written content.
+Do NOT use empathetic, relational, or emotional language. Do NOT include 'I feel'.
+Each starter should lead toward a specific memory, place, object, or concrete detail.
 Reply ONLY with valid JSON:
 {{"starters": ["<s1>", "<s2>", "<s3>"]}}
 """
@@ -172,7 +190,7 @@ Reply ONLY with valid JSON:
     return [
         "What I remember most clearly is…",
         "Something I haven't said yet is…",
-        "When I think about that time, I feel…",
+        "What I recall about that time is…",
     ]
 
 
@@ -209,6 +227,7 @@ Reply ONLY with valid JSON: {{"summary": "<text>"}}
 
 def _empty() -> dict:
     return {
+        "safety_flag": False,
         "reflection": "", "follow_up_questions": [],
         "reminiscence_prompt": "", "reframe": "",
         "continuation_starters": [], "theme_tags": [],

@@ -712,7 +712,15 @@ with col_journal:
                     elapsed = time.perf_counter() - started_at
                     st.session_state.last_generation_secs = elapsed
 
-                    if not result.get("error"):
+                    if result.get("safety_flag"):
+                        st.session_state.risk_msg = "high"
+                        st.session_state.ai_result = None
+                        status.update(
+                            label="Urgent support guidance shown",
+                            state="error",
+                            expanded=True,
+                        )
+                    elif not result.get("error"):
                         st.session_state.ai_result = result
                         status.write("Formatting the reflection and writing prompts.")
                         status.update(
