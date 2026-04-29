@@ -1,6 +1,6 @@
 """
-ai_service.py  –  Gentle Reflection Prototype
-Gemini API calls: reflection, continuation, risk classification, session summary.
+ai_service.py  –  Bereavement Writing Prototype
+Gemini API calls: content observation, continuation, risk classification, session summary.
 All functions return plain dicts; errors are caught and returned gracefully.
 """
 import json
@@ -91,20 +91,29 @@ def _parse(raw: str) -> Optional[dict]:
 @st.cache_data(ttl=3600, show_spinner=False)
 def reflect(text: str, prompt_used: str, mode: str) -> dict:
     gp = f"""
-You are a calm grief-journaling companion. Read this entry carefully.
-Keep the response concise and warm.
+Read the following journal entry and respond ONLY with valid JSON.
 
 MODE: {mode}
 PROMPT: "{prompt_used}"
 ENTRY:
 \"\"\"{text}\"\"\"
 
+Instructions:
+- Describe what was written in neutral, content-focused terms.
+- Do NOT use 'I', 'we', or any relational language.
+- Do NOT express empathy, validation, reassurance, or emotional interpretation.
+- Do NOT say 'It sounds like [emotion] is present', 'It is okay to feel this way', 'acknowledge it', or similar companion-style phrasing.
+- Do NOT infer or label emotions (e.g., do not say 'you seem sad').
+- Do NOT give advice, guidance, or therapeutic reframes.
+- Offer only optional, neutral writing prompts that are specific to the content.
+- Use formal, non-emotional language throughout.
+
 Reply ONLY with valid JSON:
 {{
-  "reflection": "<2-4 warm, specific sentences reflecting the user's words. No diagnosis. No speaking for deceased.>",
-  "follow_up_questions": ["<q1>", "<q2>", "<q3>"],
-  "reframe": "<one compassionate reframe if guilt/shame appears, else empty string>",
-  "continuation_starters": ["<s1>", "<s2>", "<s3>"],
+  "reflection": "<1-3 neutral sentences describing what was written. Content-focused, not person-focused. No empathy, no 'I', no relational language.>",
+  "follow_up_questions": ["<neutral writing prompt q1>", "<neutral writing prompt q2>", "<neutral writing prompt q3>"],
+  "reframe": "",
+  "continuation_starters": ["<neutral starter s1>", "<neutral starter s2>", "<neutral starter s3>"],
   "theme_tags": ["<tag1>", "<tag2>", "<tag3>"]
 }}
 
@@ -131,12 +140,13 @@ Return ONLY valid JSON. No markdown.
 # ── Continuation starters ──────────────────────────────────────────────
 def continue_writing(text: str, prompt_used: str) -> list[str]:
     gp = f"""
-You are a calm grief-journaling companion.
-PROMPT: "{prompt_used}"
+Read the following journal entry written in response to: "{prompt_used}".
+
 ENTRY SO FAR:
 \"\"\"{text}\"\"\"
 
-Give exactly 3 short continuation starter phrases, warm and specific to what was written.
+Give exactly 3 short neutral continuation starter phrases that are specific to the written content.
+Do NOT use empathetic or relational language. Do NOT include 'I feel' or emotional interpretation.
 Reply ONLY with valid JSON:
 {{"starters": ["<s1>", "<s2>", "<s3>"]}}
 """
@@ -163,12 +173,16 @@ def session_summary(entries: list[dict]) -> str:
         for e in entries
     )
     gp = f"""
-You are a calm grief-journaling companion reviewing a full session.
+Review the following journal session entries and produce a brief neutral summary of the content areas and topics covered.
+
 SESSION:
 \"\"\"{combined}\"\"\"
 
-Write a brief, warm, affirming summary of the emotional territory covered today.
-2-3 sentences max. No diagnosis. No speaking for the deceased.
+Instructions:
+- Describe the content structurally (e.g., topics, memories, events mentioned).
+- Do NOT use empathy, validation, or emotional language.
+- Do NOT use 'I', 'we', or relational language.
+- 2-3 sentences maximum.
 Reply ONLY with valid JSON: {{"summary": "<text>"}}
 """
     try:

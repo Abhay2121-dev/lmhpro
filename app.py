@@ -12,12 +12,13 @@ import time
 import streamlit as st
 import streamlit.components.v1 as components
 import ai_service as ai
-from safety import check as risk_check, Risk, CRISIS_MSG, ELEVATED_MSG
+from safety import check as risk_check, Risk, CRISIS_MSG, ELEVATED_MSG, SUICIDALITY_ADJACENT_MSG
+from prompts import get_suicidality_adjacent_prompts
 
 # ── Page config ────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Gentle Reflection",
-    page_icon="🌿",
+    page_title="Bereavement Writing",
+    page_icon="📝",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -575,13 +576,13 @@ if "last_generation_secs" not in st.session_state:
     st.session_state.last_generation_secs = None
 
 # ── Header ────────────────────────────────────────────────────────────
-st.markdown('<div class="journal-title">🌿 Gentle Reflection</div>', unsafe_allow_html=True)
-st.markdown('<div class="journal-subtitle">A PRIVATE SPACE FOR GRIEF &amp; MEMORY</div>', unsafe_allow_html=True)
-st.markdown('<div class="divider-ornament">✦ · ✦ · ✦</div>', unsafe_allow_html=True)
+st.markdown('<div class="journal-title">📝 Bereavement Writing</div>', unsafe_allow_html=True)
+st.markdown('<div class="journal-subtitle">A STRUCTURED WRITING ENVIRONMENT FOR GRIEF &amp; MEMORY</div>', unsafe_allow_html=True)
+st.markdown('<div class="divider-ornament">✶ · ✶ · ✶</div>', unsafe_allow_html=True)
 
 # ── Starter prompts ───────────────────────────────────────────────────
 PROMPTS = [
-    "Begin anywhere. Write whatever is present for you today…",
+    "What's on your mind today? What are you thinking about? How are you feeling today?",
     "What I have always wanted to tell you is…",
     "A treasured memory of you is…",
     "Something I never got to say was…",
@@ -705,7 +706,7 @@ with col_journal:
                     if risk == Risk.ELEVATED:
                         st.session_state.risk_msg = "elevated"
 
-                    status.write("Sending your journal to the AI companion.")
+                    status.write("Processing entry through writing assistant.")
                     started_at = time.perf_counter()
                     result = ai.reflect(journal_text, selected, "Gentle Reflection")
                     elapsed = time.perf_counter() - started_at
@@ -750,8 +751,8 @@ with col_ai:
     # Companion header
     st.markdown(
         '<div class="companion-header">'
-        '<div class="companion-avatar">✦</div>'
-        '<span class="companion-name">AI Companion · Reflections</span>'
+        '<div class="companion-avatar">✶</div>'
+        '<span class="companion-name">Writing Assistant · Structured Observations</span>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -764,10 +765,10 @@ with col_ai:
     elif r is None:
         st.markdown(
             '<div class="ai-placeholder">'
-            '<div class="ai-placeholder-icon">🌿</div>'
+            '<div class="ai-placeholder-icon">📝</div>'
             '<div class="ai-placeholder-text">'
-            'Your reflection will appear here once you write<br>'
-            'and ask for support. Progress will appear below the button.'
+            'Structured observations will appear here once writing<br>'
+            'has been submitted. Content will be described neutrally.'
             '</div>'
             '</div>',
             unsafe_allow_html=True,
@@ -779,12 +780,25 @@ with col_ai:
 
         if risk_msg == "elevated":
             st.info(ELEVATED_MSG)
+            # Neutral writing directions — no social language, no advice
+            sa_prompts = get_suicidality_adjacent_prompts()
+            sa_html = "".join(
+                f'<div class="question-item">{p}</div>' for p in sa_prompts
+            )
+            st.markdown(
+                f'<div class="ai-section">'
+                f'<div class="ai-section-label">Writing directions available</div>'
+                f'{sa_html}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         # 1. Main reflection
         reflection = r.get("reflection", "")
         if reflection:
             st.markdown(
                 f'<div class="ai-section">'
+                f'<div class="ai-section-label">Content observation</div>'
                 f'<div class="reflection-text">{reflection}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -798,7 +812,7 @@ with col_ai:
             )
             st.markdown(
                 f'<div class="ai-section">'
-                f'<div class="ai-section-label">Questions to explore</div>'
+                f'<div class="ai-section-label">Optional writing prompts</div>'
                 f'{qs_html}'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -812,31 +826,20 @@ with col_ai:
             )
             st.markdown(
                 f'<div class="ai-section">'
-                f'<div class="ai-section-label">Ways to keep writing</div>'
+                f'<div class="ai-section-label">Optional continuation starters</div>'
                 f'{st_html}'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-        # 4. Gentle reframe (only if guilt/shame)
-        if r.get("reframe"):
-            st.markdown(
-                f'<div class="ai-section" style="border-left:4px solid #4a7c59">'
-                f'<div class="ai-section-label" style="color:#4a7c59">A gentle thought</div>'
-                f'<div style="font-family:Lora,serif;font-size:0.97rem;color:#2d4a35;'
-                f'line-height:1.75">{r["reframe"]}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-
-        # 5. Feeling tags
+        # 4. Topic tags
         tags = r.get("theme_tags", [])
         if tags:
             pills = "".join(f'<span class="tag-pill">{t}</span>' for t in tags)
             st.markdown(
                 f'<div style="margin:0.5rem 0 0.2rem">'
                 f'<span style="font-size:0.72rem;color:#b5a080;'
-                f'letter-spacing:0.08em;text-transform:uppercase">What you\'re touching on · </span>'
+                f'letter-spacing:0.08em;text-transform:uppercase">Topics referenced · </span>'
                 f'{pills}</div>',
                 unsafe_allow_html=True,
             )
@@ -844,9 +847,9 @@ with col_ai:
 # ── Footer disclaimer ─────────────────────────────────────────────────
 st.markdown(
     '<div class="disclaimer-footer">'
-    'Gentle Reflection is a private journaling tool — not therapy or emergency care.<br>'
-    'If you are in crisis, please call or text <strong>988</strong> '
-    'or contact your local emergency services.'
+    'This is a structured writing tool, not a therapy or clinical service.<br>'
+    'If you are in crisis, contact a qualified professional or call/text <strong>988</strong> '
+    'or your local emergency services.'
     '</div>',
     unsafe_allow_html=True,
 )

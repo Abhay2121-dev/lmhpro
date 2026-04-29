@@ -20,35 +20,56 @@ _HIGH = [
     r"\bI\s+should\s+not\s+be\s+here\b",
     r"\bdon'?t\s+want\s+to\s+be\s+here\b",
     r"\bcan'?t\s+go\s+on\b", r"\bnot\s+worth\s+living\b",
+    # Planning / means
+    r"\bhave\s+a\s+(plan|method|way)\s+to\b",
+    r"\bgiving\s+(away|up)\s+(my\s+)?belongings\b",
+    r"\bsaying\s+goodbye\b",
+    r"\bwritten\s+(a\s+)?note\b",
+    r"\blethal\b",
+    r"\boverdose\b",
+    r"\bend\s+it\s+(all|now)\b",
+    r"\bno\s+way\s+out\b",
 ]
 _ELEVATED = [
     r"\bfeeling\s+hopeless\b", r"\bno\s+hope\b",
     r"\bburden\s+to\b", r"\bwish\s+I\s+could\s+disappear\b",
     r"\bwish\s+I\s+hadn'?t\s+woken\b", r"\bgive\s+up\b",
     r"\bdon'?t\s+see\s+(any\s+)?point\b",
+    # Additional elevated indicators
+    r"\bnothing\s+(to\s+live|left)\b",
+    r"\btired\s+of\s+(living|being\s+alive)\b",
+    r"\bwould\s+be\s+better\s+off\s+dead\b",
+    r"\bdon'?t\s+care\s+(if\s+I|whether\s+I)\s+(live|die)\b",
+    r"\bwish\s+it\s+was\s+over\b",
+    r"\bcan'?t\s+take\s+(this|it)\s+anymore\b",
 ]
 
 CRISIS_MSG = """
-## 🤍 You Are Not Alone
+What was described may indicate serious distress.
 
-Something in what you've written suggests you may be going through an especially difficult moment.
+This system cannot provide crisis support.
 
-**Please reach out:**
-- **988 Suicide & Crisis Lifeline** → Call or text **988** (US, 24/7)
-- **Crisis Text Line** → Text **HOME** to **741741**
-- **Emergency services** → Call **911**
+It is important to contact a qualified professional or a trusted person.
 
----
-💬 *A message you can send right now:*
-> "I'm having a really hard time and I need some support. Can we talk?"
+If you are in immediate danger, contact local emergency services.
 
 ---
-*This journaling app is not a substitute for mental health care.*
+**Crisis resources (US):**
+- 988 Suicide & Crisis Lifeline — Call or text **988**
+- Crisis Text Line — Text **HOME** to **741741**
+- Emergency services — Call **911**
 """
 
 ELEVATED_MSG = (
-    "🌿 *A gentle note:* If things feel overwhelming today, "
-    "please consider reaching out to someone you trust, or call/text **988**."
+    "If support is needed, contact a qualified professional or a trusted person. "
+    "The 988 Suicide & Crisis Lifeline is available at any time — call or text **988**."
+)
+
+# Displayed at ELEVATED risk level below the 988 banner.
+# Offers neutral writing directions. No empathy, no advice, no social language.
+SUICIDALITY_ADJACENT_MSG = (
+    "Writing can continue in any direction. The following topics are available "
+    "if any are relevant:"
 )
 
 
