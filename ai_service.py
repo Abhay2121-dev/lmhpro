@@ -105,15 +105,27 @@ Instructions:
 - Do NOT say 'It sounds like [emotion] is present', 'It is okay to feel this way', 'acknowledge it', or similar companion-style phrasing.
 - Do NOT infer or label emotions (e.g., do not say 'you seem sad').
 - Do NOT give advice, guidance, or therapeutic reframes.
-- Offer only optional, neutral writing prompts that are specific to the content.
 - Use formal, non-emotional language throughout.
+
+For follow_up_questions: generate 3 writing prompts that invite the writer to recall and describe something
+specific and concrete — a particular memory, place, situation, object, time of day, or sensory detail
+connected to what was written. Focus on WHERE things happened, WHAT was present in the environment,
+WHAT triggered the feeling or thought, or WHICH specific moment they are thinking of.
+Examples of the right style: "Where were you when this happened?", "What do you recall about that place?",
+"What specific moment comes to mind?", "What did the surroundings look like at the time?",
+"What triggered this memory today?", "What object or place is most connected to this?".
+Keep all questions neutral, content-specific, and non-interpretive.
+
+For continuation_starters: provide 3 short sentence-opening phrases that lead the writer toward
+a specific memory, place, or situation (e.g. "The place I most associate with this is…",
+"What I remember about that moment is…", "One thing that still brings this back is…").
 
 Reply ONLY with valid JSON:
 {{
   "reflection": "<1-3 neutral sentences describing what was written. Content-focused, not person-focused. No empathy, no 'I', no relational language.>",
-  "follow_up_questions": ["<neutral writing prompt q1>", "<neutral writing prompt q2>", "<neutral writing prompt q3>"],
+  "follow_up_questions": ["<q about a specific memory, place, or situation>", "<q about a sensory detail or trigger>", "<q about a specific moment or circumstance>"],
   "reframe": "",
-  "continuation_starters": ["<neutral starter s1>", "<neutral starter s2>", "<neutral starter s3>"],
+  "continuation_starters": ["<starter leading toward a specific memory or place>", "<starter leading toward a trigger or object>", "<starter leading toward a specific moment>"],
   "theme_tags": ["<tag1>", "<tag2>", "<tag3>"]
 }}
 
